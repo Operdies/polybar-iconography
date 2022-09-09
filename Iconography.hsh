@@ -6,19 +6,19 @@ end
 function BspcSubscribe()
   let event = nil
   return @[
-    next: function() event = ${ bspc subscribe node_add node_remove desktop_focus node_swap -c 1 } end,
+    next: function() 
+      event = ${ bspc subscribe node_add node_remove desktop_focus node_swap -c 1 }
+      return std.type(event) != "error"
+    end,
     stdout: function() return event.stdout end,
-    error: function() return std.type(event) == "error" end
   ]
 end
 
 let events = BspcSubscribe()
 let i = 0
 
-events.next()
-while events.error() == false do
+while events.next() do
   std.print(std.to_string(i) ++ ") " ++ std.trim(events.stdout()))
   i = i + 1
-  events.next()
 end
 

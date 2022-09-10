@@ -1,5 +1,18 @@
 #!/usr/bin/hush
 
+let ACCENT_MODE = std.env("ACCENT_MODE")
+if ACCENT_MODE == nil then ACCENT_MODE = "under" end
+
+let WS_START = std.env("WS_START")
+if WS_START == nil then WS_START = "" end
+
+let WS_END = std.env("WS_END")
+if WS_END == nil then WS_END = "" end
+
+let WS_SEPARATOR = std.env("WS_SEPARATOR")
+if WS_SEPARATOR == nil then WS_SEPARATOR = " ﰊ " end
+
+
 function Pygmenter()
   function color(str, c, format) 
     "%{" ++ format ++ c ++ "}" ++ str ++ "%{" ++ format ++ "-}" 
@@ -12,28 +25,23 @@ function Pygmenter()
   let Overline = function(str, c) accent(str, c, "o") end
   let Underline = function(str, c) accent(str, c, "u") end
 
+  let Accent = function(str, c) str end
+  if ACCENT_MODE == "both" then 
+    Accent = function(str, c) Overline(Underline(str, c), c) end
+  end
+  if ACCENT_MODE == "under" then Accent = Underline end 
+  if ACCENT_MODE == "over" then Accent = Overline end
+
   return @[
     Foreground: function(str, c) color(str, c, "F") end,
     Background: function(str, c) color(str, c, "B") end,
     Overline: Overline,
     Underline: Underline,
-    Accent: function(str, c) Overline(Underline(str, c), c) end
+    Accent: Accent
   ]
 end
 
 let pygmenter = Pygmenter()
-
-
-let WS_START = std.env("WS_START")
-if WS_START == nil then WS_START = "" end
-
-let WS_END = std.env("WS_END")
-if WS_END == nil then WS_END = "" end
-
-let WS_SEPARATOR = std.env("WS_SEPARATOR")
-if WS_SEPARATOR == nil then 
-  WS_SEPARATOR = " ﰊ "
-end
 
 function GetIcon(client)
   let id = client.id

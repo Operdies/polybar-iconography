@@ -168,8 +168,8 @@ function Draw(monitors)
   return result
  end
 
- function DrawWindow(window, isFirst, isLast)
-  let icon = GetIcon(window)
+ function DrawWindow(window)
+  let icon = " " ++ GetIcon(window)
   if window.count > 1 then 
     if window.count < std.len(superscripts) then 
       icon = icon ++ superscripts[window.count]
@@ -177,7 +177,7 @@ function Draw(monitors)
       icon = icon ++ superscripts[std.len(subscripts)]
     end
   else 
-    if not isLast then icon = icon ++ " " end
+    icon = icon ++ " "
   end
 
   if window.urgent then 
@@ -203,16 +203,17 @@ function Draw(monitors)
    let wActive = std.trim(workspace.name) == std.trim(focusedWorkspace)
    let wStr = ""
    let cnt = std.len(workspace.windows)
-   let shrug = " "
+   # Use a single space to denote an empty workspace
+   let emptyWsString = " "
    if wActive or cnt > 0 then
      wStr = subscript ++ "["
      let merged = MergeWindows(workspace.windows)
      let len = std.len(merged)
      for i in std.range(0, len, 1) do
         let window = merged[i]
-        wStr = wStr ++ DrawWindow(window, i == 0, i == len - 1)
+        wStr = wStr ++ DrawWindow(window)
      end
-     if cnt == 0 then wStr = wStr ++ shrug end
+     if cnt == 0 then wStr = wStr ++ emptyWsString end
      wStr = wStr ++ "]"
    end
 
@@ -249,19 +250,6 @@ function Draw(monitors)
    str = str ++ DrawMonitor(monitor)
  end
 
- # let bg = GetColor(colors.background)
- # if bg != nil then
- #   str = pygmenter.Background(str, bg)
- # end
- # let fg = GetColor(colors.foreground)
- # if fg != nil then 
- #   str = pygmenter.Foreground(str, fg)
- # end
- # let ac = GetColor(colors.accent)
- # if ac != nil then 
- #   str = pygmenter.Accent(str, ac)
- # end
-
  return str
 end
 
@@ -270,7 +258,7 @@ function BspcSubscribe()
   return @[
     next: function() 
       event = ${ bspc subscribe 
-      node_add node_remove node_swap node_focus node_stack
+      node_add node_remove node_swap node_focus node_stack node_flag
       desktop_focus -c 1 }
       return std.type(event) != "error"
     end,

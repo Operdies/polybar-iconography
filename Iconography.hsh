@@ -1,5 +1,40 @@
 #!/usr/bin/hush
 
+function Pygmenter()
+  function color(str, c, format) 
+    "%{" ++ format ++ c ++ "}" ++ str ++ "%{" ++ format ++ "-}" 
+  end
+
+  # The accent syntax differs from fg / bg syntax for some reason /shrug
+  function accent(str, c, acc) 
+    "%{" ++ acc ++ c ++ "}%{+" ++ acc ++ "}" ++ str ++ "%{-" ++ acc ++ "}" 
+  end
+  let Overline = function(str, c) accent(str, c, "o") end
+  let Underline = function(str, c) accent(str, c, "u") end
+
+  return @[
+    Foreground: function(str, c) color(str, c, "F") end,
+    Background: function(str, c) color(str, c, "B") end,
+    Overline: Overline,
+    Underline: Underline,
+    Accent: function(str, c) Overline(Underline(str, c), c) end
+  ]
+end
+
+let pygmenter = Pygmenter()
+
+
+let WS_START = std.env("WS_START")
+if WS_START == nil then WS_START = "" end
+
+let WS_END = std.env("WS_END")
+if WS_END == nil then WS_END = "" end
+
+let WS_SEPARATOR = std.env("WS_SEPARATOR")
+if WS_SEPARATOR == nil then 
+  WS_SEPARATOR = " ﰊ "
+end
+
 function GetIcon(client)
   let id = client.id
   let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" }
@@ -48,14 +83,6 @@ let colors = @[
 let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
 let superscripts = [ "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
 
-function GetFocusedWorkspace()
-  return ${ bspc query -D  --names -d .focused }.stdout
-end
-
-function GetFocusedMonitor()
-  return ${ bspc query -M  --names -m .focused }.stdout
-end
-
 let s = std.to_string
 
 function GetClients(root)
@@ -87,16 +114,34 @@ function GetWindows()
 
   for monitor in std.iter(wm.monitors) do 
     let workspaces = []
-    std.push(monitors, @[name: monitor.name, workspaces: workspaces] )
+    let focusedDesktop = monitor.focusedDesktopId
+    let monitorFocused = monitor.id == wm.focusedMonitorId
+    std.push(monitors, @[
+      name: monitor.name, 
+      workspaces: workspaces,
+      focused: monitorFocused
+    ])
 
-    for workspace in std.iter(monitor.desktops) do 
+    let len = std.len(monitor.desktops)
+    for i in std.range(0, len, 1) do
+      let workspace = monitor.desktops[i]
       let windows = []
-      std.push(workspaces, @[ name: workspace.name, windows: windows ])
+      let desktopFocused = monitorFocused and workspace.id == focusedDesktop
+
       let root = workspace.root
       let clients = GetClients(root)
 
-      for item in std.iter(clients) do 
-        std.push(windows, item)
+      let len = std.len(clients)
+      if len > 0 or desktopFocused then
+        for item in std.iter(clients) do 
+          std.push(windows, item)
+        end
+        std.push(workspaces, @[ 
+          name: workspace.name, 
+          idx: i, 
+          focused: desktopFocused,
+          windows: windows 
+        ])
       end
     end
   end
@@ -127,29 +172,13 @@ function GetColor(key)
   return env
 end
 
-function Pygmenter()
-  function pyg(str, c, format) "%{" ++ format ++ c ++ "}" ++ str ++ "%{" ++ format ++ "-}" end
-  return @[
-    Foreground: function(str, c) pyg(str, c, "F") end,
-    Background: function(str, c) pyg(str, c, "B") end,
-    # The accent syntax differs from fg / bg syntax for some reason /shrug
-    Accent: function(str, c) "%{u" ++ c ++ "}%{+u}" ++ str ++ "%{-u}" end
-  ]
-end
-
 function Draw(monitors)
- let focusedMonitor = GetFocusedMonitor()
- let focusedWorkspace = GetFocusedWorkspace()
- let pygmenter = Pygmenter()
- let idx = 0
-
  # Group an array of windows by class names.
  # urgencies are OR'ed, and the number of instances are counted
 
  function MergeWindows(windows)
   function AreEqual(w1, w2) GetIcon(w1) == GetIcon(w2) end
   let firstIdx = @[]
-  let idx = 0
   let result = []
 
   for i in std.range(0, std.len(windows), 1) do 
@@ -199,14 +228,14 @@ function Draw(monitors)
  end
 
  function DrawWorkspace(workspace)
-   let subscript = subscripts[idx]
-   let wActive = std.trim(workspace.name) == std.trim(focusedWorkspace)
+   let subscript = subscripts[workspace.idx]
+   let wActive = workspace.focused
    let wStr = ""
    let cnt = std.len(workspace.windows)
    # Use a single space to denote an empty workspace
    let emptyWsString = " "
    if wActive or cnt > 0 then
-     wStr = subscript ++ "["
+     wStr = subscript ++ WS_START
      let merged = MergeWindows(workspace.windows)
      let len = std.len(merged)
      for i in std.range(0, len, 1) do
@@ -214,7 +243,7 @@ function Draw(monitors)
         wStr = wStr ++ DrawWindow(window)
      end
      if cnt == 0 then wStr = wStr ++ emptyWsString end
-     wStr = wStr ++ "]"
+     wStr = wStr ++ WS_END
    end
 
    if wActive then 
@@ -232,15 +261,16 @@ function Draw(monitors)
      end
    end
 
-   idx = idx + 1
    return "%{A1:bspc desktop -f \"" ++ std.trim(workspace.name) ++ "\":}" ++ wStr ++ "%{A}"
  end
 
  function DrawMonitor(monitor)
    let mStr = ""
-   let mActive = monitor.name == focusedMonitor
-   for workspace in std.iter(monitor.workspaces) do 
+   let len = std.len(monitor.workspaces)
+   for i in std.range(0, len, 1) do
+     let workspace = monitor.workspaces[i]
      mStr = mStr ++ DrawWorkspace(workspace)      
+     if i < (len - 1) then mStr = mStr ++ WS_SEPARATOR end
    end 
    return mStr
  end
@@ -271,6 +301,8 @@ std.print(Draw(workspaces))
 
 let events = BspcSubscribe()
 
-while events.next() do
-  std.print(Draw(GetWindows()))
+if std.env("DEBUG") != "true" then
+  while events.next() do
+    std.print(Draw(GetWindows()))
+  end
 end

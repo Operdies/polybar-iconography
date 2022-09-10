@@ -5,6 +5,7 @@ bspwm workspace module for Polybar which shows active windows on each workspace
 
 Here is an example where the active workspace is highlighted with a underline accent,
 and the active window on the workspace is highlighted with an overline accent.
+vim () is highlighted in red on workspace 2 because it has an urgency hint set.
 
 Every icon is a unicode symbol, so [nerd fonts](https://www.nerdfonts.com/) are highly recommended.
 Use the [cheat sheet](https://www.nerdfonts.com/cheat-sheet) to find appropriate icons.

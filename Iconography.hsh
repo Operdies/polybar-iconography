@@ -35,6 +35,7 @@ function Pygmenter()
   return @[
     Foreground: function(str, c) color(str, c, "F") end,
     Background: function(str, c) color(str, c, "B") end,
+    Highlight: function(str) "%{R}" ++ str ++ "%{R}" end,
     Overline: Overline,
     Underline: Underline,
     Accent: Accent
@@ -135,21 +136,25 @@ function GetWindows()
       let workspace = monitor.desktops[i]
       let windows = []
       let desktopFocused = monitorFocused and workspace.id == focusedDesktop
+      let focusedNodeId = workspace.focusedNodeId
 
       let root = workspace.root
       let clients = GetClients(root)
 
       let len = std.len(clients)
       if len > 0 or desktopFocused then
-        for item in std.iter(clients) do 
-          std.push(windows, item)
-        end
-        std.push(workspaces, @[ 
+        let ws = @[ 
           name: workspace.name, 
           idx: i, 
           focused: desktopFocused,
           windows: windows 
-        ])
+        ]
+        for item in std.iter(clients) do 
+          item.parent = ws
+          item.focused = desktopFocused and item.id == focusedNodeId
+          std.push(windows, item)
+        end
+        std.push(workspaces, ws)
       end
     end
   end
@@ -169,7 +174,7 @@ function GetColor(key)
   defaults[colors.focused_accent] = "#ac21c4"
 
   defaults[colors.urgent_foreground] = nil 
-  defaults[colors.urgent_background] = "#f00"
+  defaults[colors.urgent_background] = "#a22"
   defaults[colors.urgent_accent] = nil
 
   let env = std.env(key)
@@ -230,6 +235,10 @@ function Draw(monitors)
     if ac != nil then 
       icon = pygmenter.Accent(icon, ac)
     end
+  end
+
+  if window.focused then 
+    icon = pygmenter.Overline(icon, GetColor(colors.focused_foreground))
   end
 
   return icon

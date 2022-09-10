@@ -1,24 +1,285 @@
 #!/usr/bin/hush
 
-function Draw()
+function GetIcon(client)
+  let id = client.id
+  let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" }
+
+  if std.type(wm_name) != "error" then 
+    if std.regex(".*\"nvim.*").match(wm_name.stdout) then 
+      return ""
+    end
+  end
+  if std.regex("[Ff]irefox").match(client.className) then 
+    return ""
+  end
+  if client.className == "Alacritty" then 
+    return ""
+  end
+  if client.className == "looking-glass-client" then 
+    return ""
+  end
+  if std.regex("[Cc]hromium|[Cc]hrome").match(client.className) then 
+    return ""
+  end
+  if client.className == "discord" then 
+    return "ﭮ"
+  end
+  if client.className == "jetbrains-rider" then 
+    return ""
+  end
+
+  return ""
+end
+
+
+let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
+let superscripts = [ "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
+
+function GetFocusedWorkspace()
+  return ${ bspc query -D  --names -d .focused }.stdout
+end
+
+function GetFocusedMonitor()
+  return ${ bspc query -M  --names -m .focused }.stdout
+end
+
+let s = std.to_string
+
+function GetClients(root)
+  function collectClients(node)
+    let r = []
+    if node == nil then return r end
+    if std.contains(node, "client") and node.client != nil then
+      node.client.id = node.id
+      std.push(r, node.client)
+    end
+    if std.contains(node, "firstChild") then 
+      for client in std.iter(collectClients(node.firstChild)) do 
+        std.push(r, client)
+      end
+    end
+    if std.contains(node, "secondChild") then 
+      for client in std.iter(collectClients(node.secondChild)) do 
+        std.push(r, client)
+      end 
+    end 
+    return r
+  end
+  return collectClients(root)
+end
+
+function GetWindows()
+  let wm = std.json.decode(${bspc wm -d}.stdout)
+  let monitors = []
+
+  for monitor in std.iter(wm.monitors) do 
+    let workspaces = []
+    std.push(monitors, @[name: monitor.name, workspaces: workspaces] )
+
+    for workspace in std.iter(monitor.desktops) do 
+      let windows = []
+      std.push(workspaces, @[ name: workspace.name, windows: windows ])
+      let root = workspace.root
+      let clients = GetClients(root)
+
+      for item in std.iter(clients) do 
+        std.push(windows, item)
+      end
+    end
+  end
+
+  return monitors
+end
+let colors = @[
+  foreground: "FOREGROUND",
+  background: "BACKGROUND",
+  accent: "ACCENT",
+
+  focused_foreground: "FOCUSED_FOREGROUND",
+  focused_background: "FOCUSED_BACKGROUND",
+  focused_accent: "FOCUSED_ACCENT",
+
+  urgent_foreground: "URGENT_FOREGROUND",
+  urgent_background: "URGENT_BACKGROUND",
+  urgent_accent: "URGENT_ACCENT"
+]
+# Todo: read xresources using xrdb?
+function GetColor(key)
+  let defaults = @[]
+  defaults[colors.foreground] = nil
+  defaults[colors.background] = nil
+  defaults[colors.accent] = nil
+
+  defaults[colors.focused_foreground] = "#fff"
+  defaults[colors.focused_background] = nil
+  defaults[colors.focused_accent] = "#ac21c4"
+
+  defaults[colors.urgent_foreground] = nil 
+  defaults[colors.urgent_background] = "#f00"
+  defaults[colors.urgent_accent] = nil
+
+  let env = std.env(key)
+  if env == nil then 
+    return defaults[key]
+  end 
+  return env
+end
+
+function Pygmenter()
+  function pyg(str, c, format) "%{" ++ format ++ c ++ "}" ++ str ++ "%{" ++ format ++ "-}" end
+  return @[
+    Foreground: function(str, c) pyg(str, c, "F") end,
+    Background: function(str, c) pyg(str, c, "B") end,
+    # The accent syntax differs from fg / bg syntax for some reason /shrug
+    Accent: function(str, c) "%{u" ++ c ++ "}%{+u}" ++ str ++ "%{-u}" end
+  ]
+end
+
+function Draw(monitors)
+ let focusedMonitor = GetFocusedMonitor()
+ let focusedWorkspace = GetFocusedWorkspace()
+ let pygmenter = Pygmenter()
+ let idx = 0
+
+ # Group an array of windows by class names.
+ # urgencies are OR'ed, and the number of instances are counted
+
+ function MergeWindows(windows)
+  function AreEqual(w1, w2) GetIcon(w1) == GetIcon(w2) end
+  let firstIdx = @[]
+  let idx = 0
+  let result = []
+
+  for i in std.range(0, std.len(windows), 1) do 
+    let this = windows[i]
+    let icon = GetIcon(this)
+    if std.contains(firstIdx, icon) then 
+      let old = windows[firstIdx[icon]]
+      old.count = old.count + 1
+      old.urgent = old.urgent or this.urgent
+    else 
+      this.count = 1
+      std.push(result, this)
+      firstIdx[icon] = i
+    end
+  end
+  return result
+ end
+
+ function DrawWindow(window, isFirst, isLast)
+  let icon = GetIcon(window)
+  if window.count > 1 then 
+    if window.count < std.len(superscripts) then 
+      icon = icon ++ superscripts[window.count]
+    else 
+      icon = icon ++ superscripts[std.len(subscripts)]
+    end
+  else 
+    if not isLast then icon = icon ++ " " end
+  end
+  if not isFirst then icon = " " ++ icon end
+
+  if window.urgent then 
+    let bg = GetColor(colors.urgent_background)
+    if bg != nil then
+      icon = pygmenter.Background(icon, bg)
+    end
+    let fg = GetColor(colors.urgent_foreground)
+    if fg != nil then 
+      icon = pygmenter.Foreground(icon, fg)
+    end
+    let ac = GetColor(colors.urgent_accent)
+    if ac != nil then 
+      icon = pygmenter.Accent(icon, ac)
+    end
+  end
+
+  return icon
+ end
+
+ function DrawWorkspace(workspace)
+   let subscript = subscripts[idx]
+   let wActive = std.trim(workspace.name) == std.trim(focusedWorkspace)
+   let wStr = ""
+   if wActive or (std.len(workspace.windows) > 0) then
+     wStr = subscript ++ "["
+     let merged = MergeWindows(workspace.windows)
+     let len = std.len(merged)
+     for i in std.range(0, len, 1) do
+        let window = merged[i]
+        wStr = wStr ++ DrawWindow(window, i == 0, i == len - 1)
+     end
+     wStr = wStr ++ "]"
+   end
+
+   if wActive then 
+     let bg = GetColor(colors.focused_background)
+     if bg != nil then
+       wStr = pygmenter.Background(wStr, bg)
+     end
+     let fg = GetColor(colors.focused_foreground)
+     if fg != nil then 
+       wStr = pygmenter.Foreground(wStr, fg)
+     end
+     let ac = GetColor(colors.focused_accent)
+     if ac != nil then 
+       wStr = pygmenter.Accent(wStr, ac)
+     end
+   end
+
+   idx = idx + 1
+   return "%{A1:bspc desktop -f \"" ++ std.trim(workspace.name) ++ "\":}" ++ wStr ++ "%{A}"
+ end
+
+ function DrawMonitor(monitor)
+   let mStr = ""
+   let mActive = monitor.name == focusedMonitor
+   for workspace in std.iter(monitor.workspaces) do 
+     mStr = mStr ++ DrawWorkspace(workspace)      
+   end 
+   return mStr
+ end
+
+ let str = ""
+ for monitor in std.iter(monitors) do 
+   str = str ++ DrawMonitor(monitor)
+ end
+
+ # let bg = GetColor(colors.background)
+ # if bg != nil then
+ #   str = pygmenter.Background(str, bg)
+ # end
+ # let fg = GetColor(colors.foreground)
+ # if fg != nil then 
+ #   str = pygmenter.Foreground(str, fg)
+ # end
+ # let ac = GetColor(colors.accent)
+ # if ac != nil then 
+ #   str = pygmenter.Accent(str, ac)
+ # end
+
+ return str
 end
 
 function BspcSubscribe()
   let event = nil
   return @[
     next: function() 
-      event = ${ bspc subscribe node_add node_remove desktop_focus node_swap -c 1 }
+      event = ${ bspc subscribe 
+      node_add node_remove node_swap node_focus node_stack
+      desktop_focus -c 1 }
       return std.type(event) != "error"
     end,
     stdout: function() return event.stdout end,
   ]
 end
 
+let workspaces = GetWindows()
+std.print(Draw(workspaces))
+
 let events = BspcSubscribe()
 let i = 0
 
 while events.next() do
-  std.print(std.to_string(i) ++ ") " ++ std.trim(events.stdout()))
-  i = i + 1
+  std.print(Draw(GetWindows()))
 end
-

@@ -31,6 +31,19 @@ function GetIcon(client)
   return ""
 end
 
+let colors = @[
+  foreground: "FOREGROUND",
+  background: "BACKGROUND",
+  accent: "ACCENT",
+
+  focused_foreground: "FOCUSED_FOREGROUND",
+  focused_background: "FOCUSED_BACKGROUND",
+  focused_accent: "FOCUSED_ACCENT",
+
+  urgent_foreground: "URGENT_FOREGROUND",
+  urgent_background: "URGENT_BACKGROUND",
+  urgent_accent: "URGENT_ACCENT"
+]
 
 let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
 let superscripts = [ "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
@@ -90,19 +103,7 @@ function GetWindows()
 
   return monitors
 end
-let colors = @[
-  foreground: "FOREGROUND",
-  background: "BACKGROUND",
-  accent: "ACCENT",
 
-  focused_foreground: "FOCUSED_FOREGROUND",
-  focused_background: "FOCUSED_BACKGROUND",
-  focused_accent: "FOCUSED_ACCENT",
-
-  urgent_foreground: "URGENT_FOREGROUND",
-  urgent_background: "URGENT_BACKGROUND",
-  urgent_accent: "URGENT_ACCENT"
-]
 # Todo: read xresources using xrdb?
 function GetColor(key)
   let defaults = @[]
@@ -122,6 +123,7 @@ function GetColor(key)
   if env == nil then 
     return defaults[key]
   end 
+  if env == "" or env == "none" then return nil end
   return env
 end
 
@@ -201,7 +203,9 @@ function Draw(monitors)
    let subscript = subscripts[idx]
    let wActive = std.trim(workspace.name) == std.trim(focusedWorkspace)
    let wStr = ""
-   if wActive or (std.len(workspace.windows) > 0) then
+   let cnt = std.len(workspace.windows)
+   let shrug = "¯\\_(ツ)_/¯"
+   if wActive or cnt > 0 then
      wStr = subscript ++ "["
      let merged = MergeWindows(workspace.windows)
      let len = std.len(merged)
@@ -209,6 +213,7 @@ function Draw(monitors)
         let window = merged[i]
         wStr = wStr ++ DrawWindow(window, i == 0, i == len - 1)
      end
+     if cnt == 0 then wStr = wStr ++ shrug end
      wStr = wStr ++ "]"
    end
 

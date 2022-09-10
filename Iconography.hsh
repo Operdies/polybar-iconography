@@ -204,7 +204,7 @@ function Draw(monitors)
    let wActive = std.trim(workspace.name) == std.trim(focusedWorkspace)
    let wStr = ""
    let cnt = std.len(workspace.windows)
-   let shrug = "¯\\_(ツ)_/¯"
+   let shrug = " "
    if wActive or cnt > 0 then
      wStr = subscript ++ "["
      let merged = MergeWindows(workspace.windows)
@@ -283,7 +283,6 @@ let workspaces = GetWindows()
 std.print(Draw(workspaces))
 
 let events = BspcSubscribe()
-let i = 0
 
 while events.next() do
   std.print(Draw(GetWindows()))

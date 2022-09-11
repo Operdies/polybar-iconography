@@ -72,7 +72,7 @@ function CreateIconLookup()
   IconLookup.default = function(c) 
     # try a second lookup using the current window name
     let wmname = GetWmName(c.id)
-    if wmname == nil or wmname == "" or wmname == "default" then return settings.default_icon end
+    if wmname == nil or wmname == "" or wmname == "default" then return icons.default_icon end
     
     if std.contains(IconLookup, wmname) then 
       return IconLookup[wmname]

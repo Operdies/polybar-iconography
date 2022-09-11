@@ -12,36 +12,83 @@ if WS_END == nil then WS_END = "" end
 let WS_SEPARATOR = std.env("WS_SEPARATOR")
 if WS_SEPARATOR == nil then WS_SEPARATOR = " ﰊ " end
 
+function GetWmName(id)
+  let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" | cut -d'=' -f2 }
+  if std.type(wm_name) != "error" then
+    let str = std.trim(wm_name.stdout)
+    let len = std.len(str)
+    # trim the leading and trailing '"'
+    return std.substr(str, 1, len-2)
+  end
+  return nil
+end
+
+let DEFAULT_ICON = ""
+let VIM_ICON = ""
+
 # Add any custom icons to this lookup table.
-# The lookup key should be the class name. You can find this
-# using xprop, though beware that bspwm assigns the values to a node 
-# that the window had at startup, and never updates it.
-# You can always reliably find the name using some `bspc query` command.
-let IconLookup = @[
-  firefox: function(c) "" end,
-  Chromium: function(c) "" end,
-  discord: function(c) "ﭮ" end,
-  Alacritty: function(c)
-    let id = c.id
-    let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" }
-    if std.type(wm_name) != "error" then 
-      if std.regex(".*\"nvim.*").match(wm_name.stdout) then 
-        return ""
-      end
+# The lookup table is checked with various properties in the following order:
+# 1. the classname bspwm assigned to the node at startup 
+# 2. the current WM_NAME according to xprop
+# 3. the first word of WM_NAME
+# the return value can either be a string, or a function accepting a single 
+# parameter: the client
+
+function CreateIconLookup()
+  let IconLookup = @[
+    firefox: "",
+    htop: "",
+    Chromium: "", 
+    discord: "ﭮ",
+    Steam: "",
+    Spotify: "",
+    vim: VIM_ICON,
+    nvim: VIM_ICON,
+    vi: VIM_ICON
+  ]
+
+  IconLookup["jetbrains-rider"] = function(c) "" end
+  IconLookup["looking-glass-client"] = function(c) "" end
+  IconLookup.default = function(c) 
+    # try a second lookup using the current window name
+    let wmname = GetWmName(c.id)
+    if wmname == nil or wmname == "" or wmname == "default" then return DEFAULT_ICON end
+    
+    if std.contains(IconLookup, wmname) then 
+      return IconLookup[wmname]
+    end 
+
+    let firstWord = std.split(wmname, " ")[0]
+    if std.contains(IconLookup, firstWord) then 
+      return IconLookup[firstWord]
     end
-    return ""
-  end 
-]
 
-IconLookup["jetbrains-rider"] = function(c) "" end
-IconLookup["looking-glass-client"] = function(c) "" end
-
-function _GetIcon(client)
-  if std.contains(IconLookup, client.className) then 
-    return IconLookup[client.className](client)
+    return DEFAULT_ICON
   end
 
-  return ""
+  IconLookup.Alacritty = function(client)
+    # Check if the program running inside the terminal 
+    # is present in the lookup table. If not, we just return a generic terminal
+    # obviously this only works if the terminal emulator is configured to change its own WM_NAME 
+    let r = IconLookup.default(client)
+    if r == DEFAULT_ICON then return "" end
+    return r
+  end
+  return IconLookup
+end
+
+let IconLookup = CreateIconLookup()
+
+function _GetIcon(client)
+  let r = IconLookup.default
+  if std.contains(IconLookup, client.className) then 
+    r = IconLookup[client.className]
+  end
+
+  while std.type(r) == "function" do 
+    r = r(client)
+  end
+  return r
 end
 
 function Pygmenter()

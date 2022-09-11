@@ -12,32 +12,33 @@ if WS_END == nil then WS_END = "" end
 let WS_SEPARATOR = std.env("WS_SEPARATOR")
 if WS_SEPARATOR == nil then WS_SEPARATOR = " ﰊ " end
 
-function _GetIcon(client)
-  let id = client.id
-  let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" }
-
-  if std.type(wm_name) != "error" then 
-    if std.regex(".*\"nvim.*").match(wm_name.stdout) then 
-      return ""
+# Add any custom icons to this lookup table.
+# The lookup key should be the class name. You can find this
+# using xprop, though beware that bspwm assigns the values to a node 
+# that the window had at startup, and never updates it.
+# You can always reliably find the name using some `bspc query` command.
+let IconLookup = @[
+  firefox: function(c) "" end,
+  Chromium: function(c) "" end,
+  discord: function(c) "ﭮ" end,
+  Alacritty: function(c)
+    let id = c.id
+    let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" }
+    if std.type(wm_name) != "error" then 
+      if std.regex(".*\"nvim.*").match(wm_name.stdout) then 
+        return ""
+      end
     end
-  end
-  if std.regex("[Ff]irefox").match(client.className) then 
-    return ""
-  end
-  if client.className == "Alacritty" then 
     return ""
-  end
-  if client.className == "looking-glass-client" then 
-    return ""
-  end
-  if std.regex("[Cc]hromium|[Cc]hrome").match(client.className) then 
-    return ""
-  end
-  if client.className == "discord" then 
-    return "ﭮ"
-  end
-  if client.className == "jetbrains-rider" then 
-    return ""
+  end 
+]
+
+IconLookup["jetbrains-rider"] = function(c) "" end
+IconLookup["looking-glass-client"] = function(c) "" end
+
+function _GetIcon(client)
+  if std.contains(IconLookup, client.className) then 
+    return IconLookup[client.className](client)
   end
 
   return ""

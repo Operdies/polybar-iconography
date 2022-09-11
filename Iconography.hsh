@@ -232,16 +232,6 @@ function Draw(monitors)
     windowString = windowString ++ " "
   end
 
-  if window.urgent then 
-    windowString = pygmenter.Background(windowString, settings.URGENT_BACKGROUND)
-    windowString = pygmenter.Foreground(windowString, settings.URGENT_FOREGROUND)
-    windowString = pygmenter.Accent(windowString, settings.URGENT_ACCENT)
-  end
-
-  if window.focused then 
-    windowString = pygmenter.Overline(windowString, settings.FOCUSED_FOREGROUND)
-  end
-
   return "%{A1:bspc node -f \"" ++ std.to_string(window.id) ++ "\":}" ++ windowString ++ "%{A}"
  end
 
@@ -257,7 +247,7 @@ function Draw(monitors)
       if std.contains(firstIdx, this._icon) then 
         let main = windows[firstIdx[this._icon]]
 
-        # if 'this' ir urgent, we swap the main id.
+        # if 'this' is urgent, we swap the main id.
         # this is to make click events prefer the urgent window
         if this.urgent then 
           main.id = this.id
@@ -275,32 +265,32 @@ function Draw(monitors)
     return result
    end
 
-
    let subscript = subscripts[workspace.idx]
-   let wActive = workspace.focused
-   let wStr = ""
+   let workspaceString = ""
    let cnt = std.len(workspace.windows)
    # Use a single space to denote an empty workspace
    let emptyWsString = "   "
-   if wActive or cnt > 0 then
-     wStr = subscript ++ settings.WS_START
+   if workspace.focused or cnt > 0 then
+     workspaceString = subscript ++ settings.WS_START
      let merged = MergeWindows(workspace.windows)
      let len = std.len(merged)
      for i in std.range(0, len, 1) do
         let window = merged[i]
-        wStr = wStr ++ DrawWindow(window)
+        let windowString = DrawWindow(window)
+        if window.urgent then 
+          windowString = pygmenter.Background(windowString, settings.URGENT_BACKGROUND)
+          windowString = pygmenter.Foreground(windowString, settings.URGENT_FOREGROUND)
+          windowString = pygmenter.Accent(windowString, settings.URGENT_ACCENT)
+        end
+        if window.focused then 
+          windowString = pygmenter.Overline(windowString, settings.FOCUSED_FOREGROUND)
+        end
+        workspaceString = workspaceString ++ windowString
      end
-     if cnt == 0 then wStr = wStr ++ emptyWsString end
-     wStr = wStr ++ settings.WS_END
+     if cnt == 0 then workspaceString = workspaceString ++ emptyWsString end
+     workspaceString = workspaceString ++ settings.WS_END
    end
-
-   if wActive then 
-     wStr = pygmenter.Background(wStr, settings.FOCUSED_BACKGROUND)
-     wStr = pygmenter.Foreground(wStr, settings.FOCUSED_FOREGROUND)
-     wStr = pygmenter.Accent(wStr, settings.FOCUSED_ACCENT)
-   end
-
-   return "%{A1:bspc desktop -f \"" ++ std.trim(workspace.name) ++ "\":}" ++ wStr ++ "%{A}"
+   return "%{A1:bspc desktop -f \"" ++ std.trim(workspace.name) ++ "\":}" ++ workspaceString ++ "%{A}"
  end
 
  function DrawMonitor(monitor)
@@ -308,7 +298,15 @@ function Draw(monitors)
    let len = std.len(monitor.workspaces)
    for i in std.range(0, len, 1) do
      let workspace = monitor.workspaces[i]
-     mStr = mStr ++ DrawWorkspace(workspace)      
+     let workspaceString = DrawWorkspace(workspace)
+     
+     if workspace.focused then 
+       workspaceString = pygmenter.Background(workspaceString, settings.FOCUSED_BACKGROUND)
+       workspaceString = pygmenter.Foreground(workspaceString, settings.FOCUSED_FOREGROUND)
+       workspaceString = pygmenter.Accent(workspaceString, settings.FOCUSED_ACCENT)
+     end
+
+     mStr = mStr ++ workspaceString
      if i < (len - 1) then mStr = mStr ++ settings.WS_SEPARATOR end
    end 
    return mStr

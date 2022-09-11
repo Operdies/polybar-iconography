@@ -32,6 +32,7 @@ let icons = @[
   vim_icon: ""
 ]
 
+# Todo: read xresources using xrdb?
 function LoadSettings()
   for kv in std.iter(settings) do 
     let env = std.env(kv.key)
@@ -142,7 +143,6 @@ let pygmenter = Pygmenter()
 let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
 let superscripts = [ "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
 
-let s = std.to_string
 
 function GetClients(root)
   function collectClients(node)
@@ -213,23 +213,6 @@ function GetWindows()
   return monitors
 end
 
-function GetSetting(key)
-end
-
-function GetSeparator(key)
-  let defaults = @[]
-
-  let env = std.env(key)
-  if env == nil then return defaults[key] end
-  if env == "" or env == "none" then return "" end
-  return env
-end
-
-
-let ACCENT_MODE = std.env("ACCENT_MODE")
-if ACCENT_MODE == nil then ACCENT_MODE = "under" end
-
-# Todo: read xresources using xrdb?
 function Draw(monitors)
  # Group an array of windows by class names.
  # urgencies are OR'ed, and the number of instances are counted
@@ -243,6 +226,13 @@ function Draw(monitors)
     let this = windows[i]
     if std.contains(firstIdx, this._icon) then 
       let main = windows[firstIdx[this._icon]]
+
+      # if 'this' ir urgent, we swap the main id.
+      # this is to make click events prefer the urgent window
+      if this.urgent then 
+        main.id = this.id
+      end
+
       main.count = main.count + 1
       main.urgent = main.urgent or this.urgent
       main.focused = main.focused or this.focused
@@ -286,7 +276,7 @@ function Draw(monitors)
     windowString = pygmenter.Overline(windowString, settings.FOCUSED_FOREGROUND)
   end
 
-  return windowString
+  return "%{A1:bspc node -f \"" ++ std.to_string(window.id) ++ "\":}" ++ windowString ++ "%{A}"
  end
 
  function DrawWorkspace(workspace)

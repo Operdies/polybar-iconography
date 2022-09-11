@@ -1,17 +1,5 @@
 #!/usr/bin/hush
 
-let ACCENT_MODE = std.env("ACCENT_MODE")
-if ACCENT_MODE == nil then ACCENT_MODE = "under" end
-
-let WS_START = std.env("WS_START")
-if WS_START == nil then WS_START = "" end
-
-let WS_END = std.env("WS_END")
-if WS_END == nil then WS_END = "" end
-
-let WS_SEPARATOR = std.env("WS_SEPARATOR")
-if WS_SEPARATOR == nil then WS_SEPARATOR = " ﰊ " end
-
 function GetWmName(id)
   let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" | cut -d'=' -f2 }
   if std.type(wm_name) != "error" then
@@ -23,8 +11,37 @@ function GetWmName(id)
   return nil
 end
 
-let DEFAULT_ICON = ""
-let VIM_ICON = ""
+let settings = @[
+  WS_START: "",
+  WS_END: "",
+  WS_SEPARATOR: "ﰊ ",
+  FOREGROUND: nil,
+  BACKGROUND: nil,
+  ACCENT: nil,
+  FOCUSED_FOREGROUND: "#fff",
+  FOCUSED_BACKGROUND: nil,
+  FOCUSED_ACCENT: "#ac21c4",
+  URGENT_FOREGROUND: nil,
+  URGENT_BACKGROUND: "#a22",
+  URGENT_ACCENT: nil,
+  ACCENT_MODE: "under"
+]
+
+let icons = @[
+  default_icon: "",
+  vim_icon: ""
+]
+
+function LoadSettings()
+  for kv in std.iter(settings) do 
+    let env = std.env(kv.key)
+    if env != nil then
+      if env == "none" then env = nil end
+      settings[kv.key] = env 
+    end
+  end
+end
+LoadSettings()
 
 # Add any custom icons to this lookup table.
 # The lookup table is checked with various properties in the following order:
@@ -42,9 +59,9 @@ function CreateIconLookup()
     discord: "ﭮ",
     Steam: "",
     Spotify: "",
-    vim: VIM_ICON,
-    nvim: VIM_ICON,
-    vi: VIM_ICON
+    vim: icons.vim_icon,
+    nvim: icons.vim_icon,
+    vi: icons.vim_icon
   ]
 
   IconLookup["jetbrains-rider"] = function(c) "" end
@@ -52,7 +69,7 @@ function CreateIconLookup()
   IconLookup.default = function(c) 
     # try a second lookup using the current window name
     let wmname = GetWmName(c.id)
-    if wmname == nil or wmname == "" or wmname == "default" then return DEFAULT_ICON end
+    if wmname == nil or wmname == "" or wmname == "default" then return settings.default_icon end
     
     if std.contains(IconLookup, wmname) then 
       return IconLookup[wmname]
@@ -63,7 +80,7 @@ function CreateIconLookup()
       return IconLookup[firstWord]
     end
 
-    return DEFAULT_ICON
+    return icons.default_icon
   end
 
   IconLookup.Alacritty = function(client)
@@ -71,7 +88,7 @@ function CreateIconLookup()
     # is present in the lookup table. If not, we just return a generic terminal
     # obviously this only works if the terminal emulator is configured to change its own WM_NAME 
     let r = IconLookup.default(client)
-    if r == DEFAULT_ICON then return "" end
+    if r == icons.default_icon then return "" end
     return r
   end
   return IconLookup
@@ -104,11 +121,11 @@ function Pygmenter()
   let Underline = function(str, c) accent(str, c, "u") end
 
   let Accent = function(str, c) str end
-  if ACCENT_MODE == "both" then 
+  if settings.ACCENT_MODE == "both" then 
     Accent = function(str, c) Overline(Underline(str, c), c) end
   end
-  if ACCENT_MODE == "under" then Accent = Underline end 
-  if ACCENT_MODE == "over" then Accent = Overline end
+  if settings.ACCENT_MODE == "under" then Accent = Underline end 
+  if settings.ACCENT_MODE == "over" then Accent = Overline end
 
   return @[
     Foreground: function(str, c) color(str, c, "F") end,
@@ -121,20 +138,6 @@ function Pygmenter()
 end
 
 let pygmenter = Pygmenter()
-
-let colors = @[
-  foreground: "FOREGROUND",
-  background: "BACKGROUND",
-  accent: "ACCENT",
-
-  focused_foreground: "FOCUSED_FOREGROUND",
-  focused_background: "FOCUSED_BACKGROUND",
-  focused_accent: "FOCUSED_ACCENT",
-
-  urgent_foreground: "URGENT_FOREGROUND",
-  urgent_background: "URGENT_BACKGROUND",
-  urgent_accent: "URGENT_ACCENT"
-]
 
 let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
 let superscripts = [ "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
@@ -210,29 +213,23 @@ function GetWindows()
   return monitors
 end
 
-# Todo: read xresources using xrdb?
-function GetColor(key)
+function GetSetting(key)
+end
+
+function GetSeparator(key)
   let defaults = @[]
-  defaults[colors.foreground] = nil
-  defaults[colors.background] = nil
-  defaults[colors.accent] = nil
-
-  defaults[colors.focused_foreground] = "#fff"
-  defaults[colors.focused_background] = nil
-  defaults[colors.focused_accent] = "#ac21c4"
-
-  defaults[colors.urgent_foreground] = nil 
-  defaults[colors.urgent_background] = "#a22"
-  defaults[colors.urgent_accent] = nil
 
   let env = std.env(key)
-  if env == nil then 
-    return defaults[key]
-  end 
-  if env == "" or env == "none" then return nil end
+  if env == nil then return defaults[key] end
+  if env == "" or env == "none" then return "" end
   return env
 end
 
+
+let ACCENT_MODE = std.env("ACCENT_MODE")
+if ACCENT_MODE == nil then ACCENT_MODE = "under" end
+
+# Todo: read xresources using xrdb?
 function Draw(monitors)
  # Group an array of windows by class names.
  # urgencies are OR'ed, and the number of instances are counted
@@ -271,22 +268,22 @@ function Draw(monitors)
   end
 
   if window.urgent then 
-    let bg = GetColor(colors.urgent_background)
+    let bg = settings.URGENT_BACKGROUND
     if bg != nil then
       windowString = pygmenter.Background(windowString, bg)
     end
-    let fg = GetColor(colors.urgent_foreground)
+    let fg = settings.URGENT_FOREGROUND
     if fg != nil then 
       windowString = pygmenter.Foreground(windowString, fg)
     end
-    let ac = GetColor(colors.urgent_accent)
+    let ac = settings.URGENT_ACCENT
     if ac != nil then 
       windowString = pygmenter.Accent(windowString, ac)
     end
   end
 
   if window.focused then 
-    windowString = pygmenter.Overline(windowString, GetColor(colors.focused_foreground))
+    windowString = pygmenter.Overline(windowString, settings.FOCUSED_FOREGROUND)
   end
 
   return windowString
@@ -300,7 +297,7 @@ function Draw(monitors)
    # Use a single space to denote an empty workspace
    let emptyWsString = "   "
    if wActive or cnt > 0 then
-     wStr = subscript ++ WS_START
+     wStr = subscript ++ settings.WS_START
      let merged = MergeWindows(workspace.windows)
      let len = std.len(merged)
      for i in std.range(0, len, 1) do
@@ -308,19 +305,19 @@ function Draw(monitors)
         wStr = wStr ++ DrawWindow(window)
      end
      if cnt == 0 then wStr = wStr ++ emptyWsString end
-     wStr = wStr ++ WS_END
+     wStr = wStr ++ settings.WS_END
    end
 
    if wActive then 
-     let bg = GetColor(colors.focused_background)
+     let bg = settings.FOCUSED_BACKGROUND
      if bg != nil then
        wStr = pygmenter.Background(wStr, bg)
      end
-     let fg = GetColor(colors.focused_foreground)
+     let fg = settings.FOCUSED_FOREGROUND
      if fg != nil then 
        wStr = pygmenter.Foreground(wStr, fg)
      end
-     let ac = GetColor(colors.focused_accent)
+     let ac = settings.FOCUSED_ACCENT
      if ac != nil then 
        wStr = pygmenter.Accent(wStr, ac)
      end
@@ -335,7 +332,7 @@ function Draw(monitors)
    for i in std.range(0, len, 1) do
      let workspace = monitor.workspaces[i]
      mStr = mStr ++ DrawWorkspace(workspace)      
-     if i < (len - 1) then mStr = mStr ++ WS_SEPARATOR end
+     if i < (len - 1) then mStr = mStr ++ settings.WS_SEPARATOR end
    end 
    return mStr
  end

@@ -340,7 +340,9 @@ function BspcSubscribe()
             PID1=$!
             sleep 0.5 &
             PID2=$!
-            wait -n';
+            wait -n
+            kill $PID1 $PID2 2> /dev/null
+            ';
     }
   end
   job = StartJob()
@@ -354,11 +356,8 @@ function BspcSubscribe()
     # hush waits for all child processes to exit.
     next: function()
       let result = job.join()
-      if result == nil then 
-        job = StartJob()
-        return true
-      end
-      return false
+      job = StartJob()
+      return true
     end,
     stdout: function() return event.stdout end,
   ]

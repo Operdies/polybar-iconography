@@ -3,7 +3,7 @@
 function NilOrEmpty(s) if s == nil or s == "" then true else false end end
 
 function GetWmName(id)
-  let wm_name = ${ xprop -id $id | grep "^WM_NAME(STRING).*" | cut -d'=' -f2 }
+  let wm_name = ${ xprop -id $id | grep "^WM_NAME(.*).*" | cut -d'=' -f2 }
   if std.type(wm_name) != "error" then
     let str = std.trim(wm_name.stdout)
     let len = std.len(str)
@@ -56,7 +56,6 @@ LoadSettings()
 
 function CreateIconLookup()
   let IconLookup = @[
-    firefox: "",
     htop: "",
     Chromium: "", 
     discord: "ﭮ",
@@ -67,8 +66,10 @@ function CreateIconLookup()
     vi: icons.vim_icon
   ]
 
-  IconLookup["jetbrains-rider"] = function(c) "" end
-  IconLookup["looking-glass-client"] = function(c) "" end
+  IconLookup["jetbrains-rider"] = ""
+  IconLookup["looking-glass-client"] = ""
+  IconLookup["Microsoft Teams - Preview"] = ""
+
   IconLookup.default = function(c) 
     # try a second lookup using the current window name
     let wmname = GetWmName(c.id)
@@ -94,6 +95,16 @@ function CreateIconLookup()
     if r == icons.default_icon then return "" end
     return r
   end
+
+  IconLookup.firefox = function(client)
+    let wmname = GetWmName(client.id)
+    if NilOrEmpty(wmname) then return "" end
+    if std.regex(".*- Outlook —.*").match(wmname) then 
+      return ""
+    end
+    return ""
+  end
+
   return IconLookup
 end
 
@@ -322,6 +333,18 @@ end
 
 function BspcSubscribe()
   let event = nil
+  let job = nil
+  function StartJob()
+    &{ bash -c '
+            bspc subscribe -c 1 node_add node_remove node_focus node_flag desktop_focus > /dev/null &
+            PID1=$!
+            sleep 0.5 &
+            PID2=$!
+            wait -n';
+    }
+  end
+  job = StartJob()
+
   return @[
     # bspc emits a ton of event, but it doesn't emit arbitrary property changes to X Windows.
     # Unfortunately, hush doesn't provide great job control in command blocks. We use bash for this instead.
@@ -329,16 +352,13 @@ function BspcSubscribe()
     # If an event happens in the meantime we cancel the sleep and draw.
     # Note that we need to manually kill whichever process hasn't finished because 
     # hush waits for all child processes to exit.
-    next: function() 
-      event = ${ bash -c '
-        bspc subscribe -c 1 node_add node_remove node_focus node_flag desktop_focus &
-        PID1=$!
-        sleep 0.5 &
-        PID2=$!
-        wait -n
-        kill $PID1 $PID2';
-      }
-      return std.type(event) != "error"
+    next: function()
+      let result = job.join()
+      if result == nil then 
+        job = StartJob()
+        return true
+      end
+      return false
     end,
     stdout: function() return event.stdout end,
   ]

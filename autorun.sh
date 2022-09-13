@@ -1,11 +1,9 @@
 #!/bin/bash 
 
+cd ./iconography/
 while true; do 
-  go build ./src/Iconography.go
-  ./Iconography &
-  id=$!
-  inotifywait -q -e close_write -r ./src
-  pkill Iconography
+  go run . &
+  inotifywait -q -e close_write -r .
+  pkill iconography
 done
 
-pkill Iconography

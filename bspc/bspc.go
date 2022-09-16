@@ -1,10 +1,11 @@
-package main
+package bspc
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"time"
 )
 
@@ -57,8 +58,13 @@ type WindowManagerState struct {
 	StackingList     []int
 }
 
-func Subscribe(args []string) chan string {
+func Subscribe(args []string, count int) chan string {
 	arguments := append([]string{"subscribe"}, args...)
+	if count != 0 {
+		carr := []string{"-c", strconv.FormatInt(int64(count), 10)}
+		arguments = append(arguments, carr...)
+	}
+	fmt.Println(arguments)
 	cmd := exec.Command("bspc", arguments...)
 	r, _ := cmd.StdoutPipe()
 	_ = cmd.Start()
@@ -69,6 +75,7 @@ func Subscribe(args []string) chan string {
 		for scanner.Scan() {
 			messages <- scanner.Text()
 		}
+		close(messages)
 	}()
 
 	return messages

@@ -1,36 +1,36 @@
-package main
+package iconography
 
 import (
 	"fmt"
-	"time"
+	"github.com/operdies/polybar-iconography/bspc"
 )
 
-type Col = func(a func() string, c string) string 
+type col = func(a func() string, c string) string
 
-type Colorizer struct {
-  Foreground Col 
-  Background Col 
-  Accent Col
+type colorizer struct {
+	Foreground col
+	Background col
+	Accent     col
 }
 
-func getColorizer() Colorizer {
-  var colorizer Colorizer 
-  foregrounds := 0
-  fg := func(a func() string, c string) string {
-    foregrounds += 1
-    str := a()
-    fmt := "{F" + c + "}" + str
-    foregrounds -= 1
-    if foregrounds == 0 {
-      fmt += "{F-}"
-    }
-    return fmt
+func getColorizer() colorizer {
+	var colorizer colorizer
+	foregrounds := 0
+	fg := func(a func() string, c string) string {
+		foregrounds += 1
+		str := a()
+		fmt := "{F" + c + "}" + str
+		foregrounds -= 1
+		if foregrounds == 0 {
+			fmt += "{F-}"
+		}
+		return fmt
 	}
-  colorizer.Foreground = fg
+	colorizer.Foreground = fg
 	return colorizer
 }
 
-func main() {
+func Draw() {
 	events := []string{
 		"node_add",
 		"node_remove",
@@ -38,15 +38,14 @@ func main() {
 		"node_flag",
 		"desktop_focus",
 	}
-	source := Subscribe(events)
-	AddHeartbeat(source, time.Second*2)
+
+	source := bspc.Subscribe(events, 2)
+
 	for {
-		evt := <-source
+		evt, ok := <-source
+		if !ok {
+			break
+		}
 		fmt.Println(evt)
-		// wmState := GetWmState()
-		// for _, mon := range wmState.Monitors {
-		// 	for _, desk := range mon.Desktops {
-		// 	}
-		// }
 	}
 }

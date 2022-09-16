@@ -1,7 +1,8 @@
 package iconography
 
 import (
-	"fmt"
+	"strings"
+
 	"github.com/operdies/polybar-iconography/bspc"
 )
 
@@ -30,22 +31,25 @@ func getColorizer() colorizer {
 	return colorizer
 }
 
-func Draw() {
-	events := []string{
-		"node_add",
-		"node_remove",
-		"node_focus",
-		"node_flag",
-		"desktop_focus",
+func getClients(node bspc.Node) []bspc.Client {
+	var result []bspc.Client
+
+	if node.Client.ClassName != "" {
+		result = append(result, node.Client)
 	}
 
-	source := bspc.Subscribe(events, 2)
+	return result
+}
 
-	for {
-		evt, ok := <-source
-		if !ok {
-			break
+func Draw(wm bspc.WindowManagerState) string {
+	var sb strings.Builder
+	for _, mon := range wm.Monitors {
+		for _, workspace := range mon.Desktops {
+			for _, client := range getClients(workspace.Root) {
+				sb.WriteString(client.ClassName)
+			}
 		}
-		fmt.Println(evt)
+
 	}
+	return sb.String()
 }

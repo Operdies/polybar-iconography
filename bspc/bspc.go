@@ -44,6 +44,11 @@ type Node struct {
 	SplitRatio  float64
 }
 
+func (n Node) Focus() {
+	cmd := exec.Command("bspc", "node", "-f", strconv.FormatInt(int64(n.Id), 10))
+	cmd.Start()
+}
+
 type Client struct {
 	ClassName string
 	Urgent    bool
@@ -60,7 +65,7 @@ type WindowManagerState struct {
 
 func Subscribe(args []string, count int) chan string {
 	arguments := append([]string{"subscribe"}, args...)
-	if count != 0 {
+	if count > 0 {
 		carr := []string{"-c", strconv.FormatInt(int64(count), 10)}
 		arguments = append(arguments, carr...)
 	}

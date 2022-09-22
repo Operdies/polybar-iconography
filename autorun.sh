@@ -1,5 +1,6 @@
 #!/bin/bash 
 
+cd "$(dirname "$0")" || return
 while true; do 
   go run . &
   inotifywait -q -e close_write -r .

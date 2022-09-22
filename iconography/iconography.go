@@ -31,22 +31,36 @@ func getColorizer() colorizer {
 	return colorizer
 }
 
-func getClients(node bspc.Node) []bspc.Client {
-	var result []bspc.Client
+func getClientNodes(node *bspc.Node) []*bspc.Node {
+	var result []*bspc.Node
 
-	if node.Client.ClassName != "" {
-		result = append(result, node.Client)
+	if node == nil {
+		return result
 	}
-
-	return result
+	if node.Client.ClassName != "" {
+		result = append(result, node)
+	}
+	result = append(result, getClientNodes(node.FirstChild)...)
+	return append(result, getClientNodes(node.SecondChild)...)
 }
 
 func Draw(wm bspc.WindowManagerState) string {
 	var sb strings.Builder
 	for _, mon := range wm.Monitors {
+		monFocused := wm.FocusedMonitorId == mon.Id
 		for _, workspace := range mon.Desktops {
-			for _, client := range getClients(workspace.Root) {
-				sb.WriteString(client.ClassName)
+			wsFocused := monFocused && mon.FocusedDesktopId == workspace.Id
+      nodes := getClientNodes(&workspace.Root)
+
+      if wsFocused || len(nodes) > 0 {
+        sb.WriteString("This one")
+      }
+			for _, node := range nodes {
+				client := node.Client
+				clientFocused := wsFocused && workspace.FocusedNodeId == node.Id
+				if !clientFocused {
+					sb.WriteString(client.ClassName + " - ")
+				}
 			}
 		}
 

@@ -30,7 +30,7 @@ let settings = @[
 ]
 
 let icons = @[
-  default_icon: "",
+  default_icon: "ﬓ",
   vim_icon: ""
 ]
 

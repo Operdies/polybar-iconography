@@ -20,7 +20,7 @@ type Monitor struct {
 	Id               int
 	RandrId          int
 	FocusedDesktopId int
-	Desktops         []Desktop
+	Desktops         []*Desktop
 }
 
 type Desktop struct {
@@ -55,12 +55,23 @@ type Client struct {
 	Shown     bool
 }
 
+/* this client will be decorated with additional information when retrieved by GetAllClients */
+type DecoratedClient struct {
+	Client       Client
+	Node         *Node
+	Desktop      *Desktop
+	Monitor      *Monitor
+	Wm           *WindowManagerState
+	DesktopIndex int
+	Focused      bool
+}
+
 type WindowManagerState struct {
 	FocusedMonitorId int
 	ClientsCount     int
-	Monitors         []Monitor
-	FocusHistory     []FocusHistoryItem
-	StackingList     []int
+	Monitors         []*Monitor
+	FocusHistory     []*FocusHistoryItem
+	StackingList     []*int
 }
 
 func Subscribe(args []string, count int) chan string {
@@ -69,7 +80,7 @@ func Subscribe(args []string, count int) chan string {
 		carr := []string{"-c", strconv.FormatInt(int64(count), 10)}
 		arguments = append(arguments, carr...)
 	}
-	fmt.Println(arguments)
+
 	cmd := exec.Command("bspc", arguments...)
 	r, _ := cmd.StdoutPipe()
 	_ = cmd.Start()
@@ -94,6 +105,48 @@ func AddHeartbeat(messages chan string, interval time.Duration) {
 			messages <- "Heartbeat"
 		}
 	}()
+}
+
+func recursiveGetClients(n *Node) []DecoratedClient {
+	clients := make([]DecoratedClient, 0)
+	if n != nil && n.Client.ClassName != "" {
+		clients = make([]DecoratedClient, 1)
+		var c DecoratedClient
+		c.Client = n.Client
+		c.Node = n
+		clients[0] = c
+	}
+
+	if n.FirstChild != nil {
+		clients = append(clients, recursiveGetClients(n.FirstChild)...)
+	}
+	if n.SecondChild != nil {
+		clients = append(clients, recursiveGetClients(n.SecondChild)...)
+	}
+	return clients
+}
+
+func GetAllClients(wm *WindowManagerState) []DecoratedClient {
+	clients := make([]DecoratedClient, wm.ClientsCount)
+	cnt := 0
+	for _, mon := range wm.Monitors {
+		monFocused := mon.Id == wm.FocusedMonitorId
+		for idx, desktop := range mon.Desktops {
+			desktopFocused := monFocused && desktop.Id == mon.FocusedDesktopId
+			subclients := recursiveGetClients(&desktop.Root)
+			for _, s := range subclients {
+				s.Desktop = desktop
+				s.Monitor = mon
+				s.Wm = wm
+        s.DesktopIndex = idx
+				s.Focused = desktopFocused && desktop.FocusedNodeId == s.Node.Id
+				clients[cnt] = s
+				cnt = cnt + 1
+			}
+		}
+	}
+
+	return clients
 }
 
 func GetWmState() WindowManagerState {

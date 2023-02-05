@@ -3,7 +3,7 @@ package iconography
 import (
 	"strings"
 
-	"github.com/operdies/polybar-iconography/bspc"
+	"github.com/operdies/polybar-iconography/pkg/bspc"
 )
 
 type col = func(a func() string, c string) string
@@ -14,21 +14,22 @@ type colorizer struct {
 	Accent     col
 }
 
-func getColorizer() colorizer {
-	var colorizer colorizer
-	foregrounds := 0
-	fg := func(a func() string, c string) string {
-		foregrounds += 1
-		str := a()
-		fmt := "{F" + c + "}" + str
-		foregrounds -= 1
-		if foregrounds == 0 {
-			fmt += "{F-}"
-		}
-		return fmt
-	}
-	colorizer.Foreground = fg
-	return colorizer
+var SETTINGS map[string]string
+var ICONS map[string]string
+
+func init() {
+	SETTINGS = make(map[string]string)
+	SETTINGS["WS_SEPARATOR"] = "┊"
+	SETTINGS["FOCUSED_FOREGROUND"] = "#fff"
+	SETTINGS["FOCUSED_BACKGROUND"] = "#0000"
+	SETTINGS["FOCUSED_ACCENT"] = "#ac21c4"
+	SETTINGS["URGENT_BACKGROUND"] = "#a22"
+	SETTINGS["ACCENT_MODE"] = "under"
+
+	ICONS = make(map[string]string)
+	ICONS["default"] = ""
+	ICONS["vim"] = ""
+	ICONS["firefox"] = " "
 }
 
 func getClientNodes(node *bspc.Node) []*bspc.Node {
@@ -52,9 +53,6 @@ func Draw(wm bspc.WindowManagerState) string {
 			wsFocused := monFocused && mon.FocusedDesktopId == workspace.Id
       nodes := getClientNodes(&workspace.Root)
 
-      if wsFocused || len(nodes) > 0 {
-        sb.WriteString("This one")
-      }
 			for _, node := range nodes {
 				client := node.Client
 				clientFocused := wsFocused && workspace.FocusedNodeId == node.Id

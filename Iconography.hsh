@@ -30,8 +30,9 @@ let settings = @[
 ]
 
 let icons = @[
-  default_icon: "",
-  vim_icon: ""
+  default: "",
+  vim: "",
+  firefox: " "
 ]
 
 # Todo: read xresources using xrdb?
@@ -61,19 +62,21 @@ function CreateIconLookup()
     discord: "ﭮ",
     Steam: "",
     Spotify: "",
-    vim: icons.vim_icon,
-    nvim: icons.vim_icon,
-    vi: icons.vim_icon
+    vim: icons.vim,
+    nvim: icons.vim,
+    neovide: "'" ++ icons.vim ++ "'",
+    vi: icons.vim,
+    Thunar: ""
   ]
 
   IconLookup["jetbrains-rider"] = ""
-  IconLookup["looking-glass-client"] = ""
+  IconLookup["looking-glass-client"] = " "
   IconLookup["Microsoft Teams - Preview"] = ""
 
   IconLookup.default = function(c) 
     # try a second lookup using the current window name
     let wmname = GetWmName(c.id)
-    if wmname == nil or wmname == "" or wmname == "default" then return icons.default_icon end
+    if wmname == nil or wmname == "" or wmname == "default" then return icons.default end
     
     if std.contains(IconLookup, wmname) then 
       return IconLookup[wmname]
@@ -84,7 +87,7 @@ function CreateIconLookup()
       return IconLookup[firstWord]
     end
 
-    return icons.default_icon
+    return icons.default
   end
 
   IconLookup.Alacritty = function(client)
@@ -92,17 +95,17 @@ function CreateIconLookup()
     # is present in the lookup table. If not, we just return a generic terminal
     # obviously this only works if the terminal emulator is configured to change its own WM_NAME 
     let r = IconLookup.default(client)
-    if r == icons.default_icon then return "" end
+    if r == icons.default then return "" end
     return r
   end
 
   IconLookup.firefox = function(client)
     let wmname = GetWmName(client.id)
-    if NilOrEmpty(wmname) then return "" end
+    if NilOrEmpty(wmname) then return icons.firefox end
     if std.regex(".*- Outlook —.*").match(wmname) then 
       return ""
     end
-    return ""
+    return icons.firefox
   end
 
   return IconLookup
@@ -155,7 +158,7 @@ end
 let pygmenter = Pygmenter()
 
 let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
-let superscripts = [ "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
+let superscripts = [ "⁰", "¹", " ²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
 
 
 function GetClients(root)

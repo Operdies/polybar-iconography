@@ -4,32 +4,40 @@ import (
 	"strings"
 
 	"github.com/operdies/polybar-iconography/pkg/bspc"
+	"gopkg.in/yaml.v3"
 )
 
-type col = func(a func() string, c string) string
-
-type colorizer struct {
-	Foreground col
-	Background col
-	Accent     col
+type Colors struct {
+	Foreground string
+	Background string
+	Accent     string
 }
 
-var SETTINGS map[string]string
-var ICONS map[string]string
+type Config struct {
+	Workspace_separators struct {
+		Before  string
+		After   string
+		Between string
+	}
+	Colors struct {
+		Accent_mode string
+		Normal      Colors
+		Focused     Colors
+		Urgent      Colors
+	}
+	Icons struct {
+		Fallback string
+		Mappings []struct {
+			Pattern string
+			Icon    string
+		}
+	}
+}
 
-func init() {
-	SETTINGS = make(map[string]string)
-	SETTINGS["WS_SEPARATOR"] = "┊"
-	SETTINGS["FOCUSED_FOREGROUND"] = "#fff"
-	SETTINGS["FOCUSED_BACKGROUND"] = "#0000"
-	SETTINGS["FOCUSED_ACCENT"] = "#ac21c4"
-	SETTINGS["URGENT_BACKGROUND"] = "#a22"
-	SETTINGS["ACCENT_MODE"] = "under"
-
-	ICONS = make(map[string]string)
-	ICONS["default"] = ""
-	ICONS["vim"] = ""
-	ICONS["firefox"] = " "
+func ParseConfig(config []byte) (*Config, error) {
+	cfg := &Config{}
+	err := yaml.Unmarshal(config, &cfg)
+	return cfg, err
 }
 
 func getClientNodes(node *bspc.Node) []*bspc.Node {
@@ -51,7 +59,7 @@ func Draw(wm bspc.WindowManagerState) string {
 		monFocused := wm.FocusedMonitorId == mon.Id
 		for _, workspace := range mon.Desktops {
 			wsFocused := monFocused && mon.FocusedDesktopId == workspace.Id
-      nodes := getClientNodes(&workspace.Root)
+			nodes := getClientNodes(&workspace.Root)
 
 			for _, node := range nodes {
 				client := node.Client

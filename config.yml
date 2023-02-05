@@ -1,0 +1,39 @@
+# These are the default settings used if no other config files are found.
+# The following locations are tried, in order:
+# 1. -config-file CLI argument
+# 2. config.yml next to iconography executable
+# 3. $HOME/.config/iconography/config.yml
+# 4. $HOME/.iconography.yml
+# 5. The default config
+workspace_separators:
+  before: ""
+  after: ""
+  between: "┊"
+colors:
+  accent_mode: "under" # over/under/both
+  normal:
+    foreground: nil
+    background: nil
+    accent: nil
+  focused:
+    foreground: "#fff"
+    background: "#0000"
+    accent: "#ac21c4"
+  urgent:
+    foreground: nil
+    background: "#a22"
+    accent: nil
+icons:
+  # When determining the icon for a node, each pattern in this mapping list is tried in order 
+  # The pattern is first tried on the Class Name bspwm assigned to the node at startup
+  # It is then tried on the current WM_NAME according to xprop
+  # If neither name matches the pattern, the next pattern in the list is tried. If no pattern matches, the fallback icon is used
+  # For this reason, specific patterns must be defined before more generic patterns
+  mappings:
+    - pattern: '.*vim.*'
+      icon: 
+    - pattern: '.*firefox.*'
+      icon: 
+    # Catch all pattern
+    - pattern: '.*'
+      icon: 

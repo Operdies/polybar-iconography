@@ -138,7 +138,7 @@ func GetAllClients(wm *WindowManagerState) []DecoratedClient {
 				s.Desktop = desktop
 				s.Monitor = mon
 				s.Wm = wm
-        s.DesktopIndex = idx
+				s.DesktopIndex = idx
 				s.Focused = desktopFocused && desktop.FocusedNodeId == s.Node.Id
 				clients[cnt] = s
 				cnt = cnt + 1

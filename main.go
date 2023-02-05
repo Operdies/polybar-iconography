@@ -15,7 +15,6 @@ import (
 
 	"github.com/operdies/polybar-iconography/pkg/bspc"
 	"github.com/operdies/polybar-iconography/pkg/iconography"
-	"gopkg.in/yaml.v3"
 )
 
 const sockfile = "/tmp/iconography.sock"
@@ -37,7 +36,6 @@ func socker() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGKILL)
-	fmt.Printf("Setting handler\n")
 	go func() {
 		sig := <-c
 		fmt.Printf("%v Interrupt received\n", sig)
@@ -120,18 +118,17 @@ func getConfig() (*iconography.Config, error) {
 
 func main() {
 	log.SetFlags(0)
-	config := flag.Bool("dump-config", false, "Dump the default config to stdout and exit")
+	dumpConfig := flag.Bool("dump-config", false, "Dump the default config to stdout and exit")
 	flag.StringVar(&configFile, "config-file", "", "The path to a config file")
 	ipc := flag.Bool("ipc", false, "Interpret the remaining arguments as IPC arguments, and exit after communicating with main process.")
 	flag.Parse()
 
-	if *config {
-		cfg, err := iconography.ParseConfig(defaultConfig)
+	if *dumpConfig {
+		_, err := iconography.ParseConfig(defaultConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
-		s, _ := yaml.Marshal(cfg)
-		fmt.Print(string(s))
+		fmt.Print(string(defaultConfig))
 		return
 	}
 
@@ -146,9 +143,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s, _ := yaml.Marshal(cfg)
-	fmt.Print(string(s))
-	return
 
 	events := []string{
 		"node_add",
@@ -162,9 +156,10 @@ func main() {
 
 	go socker()
 
+	drawer := iconography.CreateDrawer(cfg)
 	for {
 		wm := bspc.GetWmState()
-		drawing := iconography.Draw(wm)
+		drawing := drawer.Draw(wm)
 		fmt.Println(drawing)
 		_, ok := <-source
 		if !ok {

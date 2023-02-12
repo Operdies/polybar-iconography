@@ -98,6 +98,7 @@ function CreateIconLookup()
     if r == icons.default then return "" end
     return r
   end
+  IconLookup["org.wezfurlong.wezterm"] = IconLookup.Alacritty
 
   IconLookup.firefox = function(client)
     let wmname = GetWmName(client.id)
@@ -157,7 +158,7 @@ end
 
 let pygmenter = Pygmenter()
 
-let subscripts = [ "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀" ]
+let subscripts = [ "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉" ]
 let superscripts = [ "⁰", "¹", " ²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
 
 
@@ -210,20 +211,20 @@ function GetWindows()
       let clients = GetClients(root)
 
       let len = std.len(clients)
-      if len > 0 or desktopFocused then
-        let ws = @[ 
-          name: workspace.name, 
-          idx: i, 
-          focused: desktopFocused,
-          windows: windows 
-        ]
-        for item in std.iter(clients) do 
-          item.parent = ws
-          item.focused = desktopFocused and item.id == focusedNodeId
-          std.push(windows, item)
-        end
-        std.push(workspaces, ws)
+
+      let ws = @[ 
+        name: workspace.name, 
+        idx: i, 
+        focused: desktopFocused,
+        windows: windows,
+        visible: len > 0 or desktopFocused
+      ]
+      for item in std.iter(clients) do 
+        item.parent = ws
+        item.focused = desktopFocused and item.id == focusedNodeId
+        std.push(windows, item)
       end
+      std.push(workspaces, ws)
     end
   end
 
@@ -233,6 +234,16 @@ end
 function Draw(monitors)
  # Group an array of windows by class names.
  # urgencies are OR'ed, and the number of instances are counted
+ # Maintain a mapping from monitor names to their physical order
+
+ let WORKSPACE_ORDER = @[]
+ let i = 0
+ for mon in std.iter(monitors) do 
+  for ws in std.iter(mon.workspaces) do 
+    i = i + 1
+    WORKSPACE_ORDER[ws.name] = i % 10
+  end
+ end
 
  function DrawWindow(window)
   let windowString = " " ++ window._icon
@@ -279,7 +290,7 @@ function Draw(monitors)
     return result
    end
 
-   let subscript = subscripts[workspace.idx]
+   let subscript = subscripts[WORKSPACE_ORDER[workspace.name]]
    let workspaceString = ""
    let cnt = std.len(workspace.windows)
    # Use a single space to denote an empty workspace
@@ -312,23 +323,32 @@ function Draw(monitors)
    let len = std.len(monitor.workspaces)
    for i in std.range(0, len, 1) do
      let workspace = monitor.workspaces[i]
-     let workspaceString = DrawWorkspace(workspace)
-     
-     if workspace.focused then 
-       workspaceString = pygmenter.Background(workspaceString, settings.FOCUSED_BACKGROUND)
-       workspaceString = pygmenter.Foreground(workspaceString, settings.FOCUSED_FOREGROUND)
-       workspaceString = pygmenter.Accent(workspaceString, settings.FOCUSED_ACCENT)
-     end
+     if workspace.visible then
+      let workspaceString = DrawWorkspace(workspace)
+      
+      if workspace.focused then 
+        workspaceString = pygmenter.Background(workspaceString, settings.FOCUSED_BACKGROUND)
+        workspaceString = pygmenter.Foreground(workspaceString, settings.FOCUSED_FOREGROUND)
+        workspaceString = pygmenter.Accent(workspaceString, settings.FOCUSED_ACCENT)
+      end
 
-     mStr = mStr ++ workspaceString
-     if i < (len - 1) then mStr = mStr ++ settings.WS_SEPARATOR end
+      mStr = mStr ++ workspaceString
+      if i < (len - 1) then mStr = mStr ++ settings.WS_SEPARATOR end
+     end
    end 
    return mStr
  end
 
  let str = ""
- for monitor in std.iter(monitors) do 
-   str = str ++ DrawMonitor(monitor)
+ let len = std.len(monitors)
+ let mon = std.env("MONITOR")
+
+ for i in std.range(0, len, 1) do 
+   let monitor = monitors[i]
+   let monstr = DrawMonitor(monitor)
+   if mon == nil or monitor.name == mon then 
+    str = str ++ monstr
+   end
  end
 
  return str

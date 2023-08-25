@@ -59,20 +59,26 @@ function CreateIconLookup()
   let IconLookup = @[
     htop: "",
     Chromium: "", 
+    qutebrowser: "", 
     discord: "ﭮ",
     Steam: "",
     Spotify: "",
+    Pavucontrol: "墳",
     vim: icons.vim,
     nvim: icons.vim,
     neovide: "'" ++ icons.vim ++ "'",
     vi: icons.vim,
     Thunar: "",
-    qutebrowser: ""
+    Lutris: "",
+    unityhub: "",
+    Unity: "",
   ]
 
-  IconLookup["jetbrains-rider"] = "R"
+  IconLookup["Blueman-manager"] = ""
+  IconLookup["jetbrains-rider"] = ""
   IconLookup["looking-glass-client"] = " "
   IconLookup["Microsoft Teams - Preview"] = ""
+  IconLookup["Virt-manager"] = ""
 
   IconLookup.default = function(c) 
     # try a second lookup using the current window name
@@ -162,7 +168,6 @@ let pygmenter = Pygmenter()
 
 let subscripts = [ "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉" ]
 let superscripts = [ "⁰", "¹", " ²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ" ]
-
 
 function GetClients(root)
   function collectClients(node)
@@ -335,7 +340,12 @@ function Draw(monitors)
       end
 
       mStr = mStr ++ workspaceString
-      if i < (len - 1) then mStr = mStr ++ settings.WS_SEPARATOR end
+      for j in std.range(i+1, len, 1) do 
+        if monitor.workspaces[j].visible then 
+          mStr = mStr ++ settings.WS_SEPARATOR 
+          break
+        end
+      end
      end
    end 
    return mStr

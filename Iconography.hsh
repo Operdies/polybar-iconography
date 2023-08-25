@@ -66,10 +66,11 @@ function CreateIconLookup()
     nvim: icons.vim,
     neovide: "'" ++ icons.vim ++ "'",
     vi: icons.vim,
-    Thunar: ""
+    Thunar: "",
+    qutebrowser: ""
   ]
 
-  IconLookup["jetbrains-rider"] = ""
+  IconLookup["jetbrains-rider"] = "R"
   IconLookup["looking-glass-client"] = " "
   IconLookup["Microsoft Teams - Preview"] = ""
 
@@ -99,6 +100,7 @@ function CreateIconLookup()
     return r
   end
   IconLookup["org.wezfurlong.wezterm"] = IconLookup.Alacritty
+  IconLookup["Xfce4-terminal"] = IconLookup.Alacritty
 
   IconLookup.firefox = function(client)
     let wmname = GetWmName(client.id)

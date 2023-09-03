@@ -20,7 +20,6 @@ pub struct DrawSettings {
 
 #[derive(Debug)]
 pub enum Predicate {
-    Equals(String),
     Matches(regex::Regex),
     Contains(String),
     StartsWith(String),
@@ -30,7 +29,6 @@ impl Predicate {
     fn is_match(&self, v: &str) -> bool {
         let v = v.to_lowercase();
         match self {
-            Predicate::Equals(r) => r.eq(v.as_str()),
             Predicate::Matches(r) => r.is_match(v.as_str()),
             Predicate::Contains(r) => v.contains(r.as_str()),
             Predicate::StartsWith(r) => v.starts_with(r.as_str()),
@@ -96,12 +94,13 @@ fn get_properties(key: &str, seq: &[serde_yaml::Value]) -> Property {
     let mut list_items = vec![];
     for mapping in mappings {
         fn get_predicate(key: &str, value: &str) -> Option<Predicate> {
+            let value = value.to_lowercase();
             match key {
                 "matches" => Some(Predicate::Matches(
-                    regex::Regex::from_str(value).expect("Failed to parse pattern."),
+                    regex::Regex::from_str(&value).expect("Failed to parse pattern."),
                 )),
-                "contains" => Some(Predicate::Contains(value.to_string())),
-                "starts_with" => Some(Predicate::StartsWith(value.to_string())),
+                "contains" => Some(Predicate::Contains(value)),
+                "starts_with" => Some(Predicate::StartsWith(value)),
                 _ => None,
             }
         }
@@ -112,7 +111,9 @@ fn get_properties(key: &str, seq: &[serde_yaml::Value]) -> Property {
             });
             if let Some((key, icon)) = pair.take() {
                 list_items.push(PropertyListItem {
-                    predicate: Predicate::Equals(key.to_lowercase()),
+                    predicate: Predicate::Matches(
+                        regex::Regex::from_str(&key.to_lowercase()).expect("Failed to parse pattern."),
+                    ),
                     icon: Icon(icon.clone()),
                     sub_list: None,
                 })

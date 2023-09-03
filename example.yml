@@ -7,9 +7,17 @@ icons:
           - htop: 
           - matches: ^(nvim|vim|vi)
             icon: 
-      - matches: qutebrowser|chromium
+      - matches: qutebrowser|chromium|firefox
         icon: 
+        window_title:
+          - contains: youtube
+            icon: 
+          - contains: gmail
+            icon: 
+          - contains: outlook
+            icon: 
       - discord: ﭮ
       - Steam: 
+      - Spotify: 
+      - jetbrains-rider: 
 tick_rate: 1000
-

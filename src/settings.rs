@@ -20,6 +20,7 @@ pub struct DrawSettings {
 
 #[derive(Debug)]
 pub enum Predicate {
+    Equals(String),
     Matches(regex::Regex),
     Contains(String),
     StartsWith(String),
@@ -29,6 +30,7 @@ impl Predicate {
     fn is_match(&self, v: &str) -> bool {
         let v = v.to_lowercase();
         match self {
+            Predicate::Equals(r) => r.eq(v.as_str()),
             Predicate::Matches(r) => r.is_match(v.as_str()),
             Predicate::Contains(r) => v.contains(r.as_str()),
             Predicate::StartsWith(r) => v.starts_with(r.as_str()),
@@ -102,6 +104,20 @@ fn get_properties(key: &str, seq: &[serde_yaml::Value]) -> Property {
                 "starts_with" => Some(Predicate::StartsWith(value.to_string())),
                 _ => None,
             }
+        }
+        if mapping.len() == 1 {
+            let mut pair = mapping.into_iter().find_map(|f| match f {
+                (V::String(key), V::String(value)) => Some((key, value)),
+                _ => None,
+            });
+            if let Some((key, icon)) = pair.take() {
+                list_items.push(PropertyListItem {
+                    predicate: Predicate::Equals(key.to_lowercase()),
+                    icon: Icon(icon.clone()),
+                    sub_list: None,
+                })
+            }
+            continue;
         }
         let icon = mapping.iter().find_map(|m| match m {
             (V::String(key), V::String(value)) if key == "icon" => Some(Icon(value.to_string())),

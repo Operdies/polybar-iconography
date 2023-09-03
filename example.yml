@@ -3,17 +3,13 @@ icons:
       - matches: xfce4-terminal|alacritty|.*wezterm.*
         icon: 
         window_title:
-          - matches: tmux
-            icon: 
+          - tmux: 
+          - htop: 
           - matches: ^(nvim|vim|vi)
             icon: 
-          - contains: htop
-            icon: 
       - matches: qutebrowser|chromium
         icon: 
-      - matches: discord
-        icon: ﭮ
-      - matches: .*
-        icon: 
+      - discord: ﭮ
+      - Steam: 
 tick_rate: 1000
 

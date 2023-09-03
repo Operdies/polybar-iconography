@@ -1,11 +1,11 @@
-use std::hash::Hash;
-use std::io::{Read, Write};
-use std::os::fd::AsRawFd;
-use std::os::unix::net::UnixStream;
 use nix::sys::select::FdSet;
 use polybar_iconography::bspc::{self, Node, WmState};
 use polybar_iconography::settings::{get_settings, Settings};
 use polybar_iconography::x11;
+use std::hash::Hash;
+use std::io::{Read, Write};
+use std::os::fd::AsRawFd;
+use std::os::unix::net::UnixStream;
 
 const SUBSCRIPTS: [&str; 10] = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀"];
 const SUPERSCRIPTS: [&str; 11] = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "ⁿ"];
@@ -61,55 +61,60 @@ fn render(state: WmState, settings: &Settings) {
         let mut desktop_strings = vec![];
         let monitor_focused = state.focused_monitor_id == monitor.id;
         for desktop in monitor.desktops.iter() {
-            let desktop_focused = monitor_focused && desktop.id == monitor.focused_desktop_id;
-            if let Some(ref root) = desktop.root {
-                let clients = get_client_nodes(root);
-                if clients.is_empty() {
-                    continue;
-                }
-                let mut desktop_string = String::new();
-                desktop_string.push_str(SUBSCRIPTS.get(d).cloned().unwrap_or("?"));
-                desktop_string.push_str(settings.draw_settings.prefix.as_deref().unwrap_or(" "));
-                let groups = group_by(&clients, |c| settings.icons.get_icon(c));
-                for group in groups {
-                    let superscript = if group.len() > 1 {
-                        SUPERSCRIPTS
-                            .get(group.len())
-                            .or(SUPERSCRIPTS.last())
-                            .unwrap()
-                    } else {
-                        " "
-                    };
-                    let group_focused =
-                        desktop_focused && group.iter().any(|g| g.id == desktop.focused_node_id);
-                    let alert = group.iter().any(|g| g.client.as_ref().unwrap().urgent);
-                    let icon = settings.icons.get_icon(group[0]);
-
-                    let this_str = format!("{} {}", icon, superscript);
-                    let formatter = if alert {
-                        &settings.draw_settings.urgent_node_draw_mode
-                    } else if group_focused {
-                        &settings.draw_settings.focused_node_draw_mode
-                    } else {
-                        &settings.draw_settings.node_draw_mode
-                    };
-                    let focus_link = format!("bspc node -f {}", group[0].id);
-                    desktop_string.push_str(&formatter.format(this_str, Some(&focus_link)));
-                }
-                if let Some(post) = settings.draw_settings.postfix.as_deref() {
-                    desktop_string.push_str(post);
-                }
-                let formatter = if desktop_focused {
-                    &settings.draw_settings.focused_workspace_draw_mode
-                } else {
-                    &settings.draw_settings.workspace_draw_mode
-                };
-                desktop_strings.push(formatter.format(
-                    desktop_string,
-                    Some(&format!("bspc desktop -f '{}'", desktop.name)),
-                ));
-            }
+            let subscript = SUBSCRIPTS.get(d).cloned().unwrap_or("?");
             d += 1;
+            let desktop_focused = monitor_focused && desktop.id == monitor.focused_desktop_id;
+            let clients = desktop
+                .root
+                .as_ref()
+                .map(get_client_nodes)
+                .unwrap_or(vec![]);
+
+            if clients.is_empty() && !desktop_focused {
+                continue;
+            }
+
+            let mut desktop_string = String::new();
+            desktop_string.push_str(subscript);
+            desktop_string.push_str(settings.draw_settings.prefix.as_deref().unwrap_or(" "));
+            let groups = group_by(&clients, |c| settings.icons.get_icon(c));
+            for group in groups {
+                let superscript = if group.len() > 1 {
+                    SUPERSCRIPTS
+                        .get(group.len())
+                        .or(SUPERSCRIPTS.last())
+                        .unwrap()
+                } else {
+                    " "
+                };
+                let group_focused =
+                    desktop_focused && group.iter().any(|g| g.id == desktop.focused_node_id);
+                let alert = group.iter().any(|g| g.client.as_ref().unwrap().urgent);
+                let icon = settings.icons.get_icon(group[0]);
+
+                let this_str = format!("{} {}", icon, superscript);
+                let formatter = if alert {
+                    &settings.draw_settings.urgent_node_draw_mode
+                } else if group_focused {
+                    &settings.draw_settings.focused_node_draw_mode
+                } else {
+                    &settings.draw_settings.node_draw_mode
+                };
+                let focus_link = format!("bspc node -f {}", group[0].id);
+                desktop_string.push_str(&formatter.format(this_str, Some(&focus_link)));
+            }
+            if let Some(post) = settings.draw_settings.postfix.as_deref() {
+                desktop_string.push_str(post);
+            }
+            let formatter = if desktop_focused {
+                &settings.draw_settings.focused_workspace_draw_mode
+            } else {
+                &settings.draw_settings.workspace_draw_mode
+            };
+            desktop_strings.push(formatter.format(
+                desktop_string,
+                Some(&format!("bspc desktop -f '{}'", desktop.name)),
+            ));
         }
         if !desktop_strings.is_empty() {
             let formatter = &settings.draw_settings.workspace_draw_mode;

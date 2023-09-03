@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Operdies/gwatch.nvim/main/schema.json",
+  "command": "cargo test",
+  "window position": "bottom",
+  "window height": 20,
+  "profiles": {
+    "test": {
+      "command": "cargo test"
+    },
+    "run": {
+      "command": "cargo run",
+      "trigger": "hotkey",
+      "mode": "kill"
+    }
+  }
+}

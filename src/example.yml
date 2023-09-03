@@ -1,0 +1,19 @@
+icons:
+  - class_name:
+      - matches: xfce4-terminal|alacritty|.*wezterm.*
+        icon: 
+        window_title:
+          - matches: tmux
+            icon: 
+          - matches: ^(nvim|vim|vi)
+            icon: 
+          - contains: htop
+            icon: 
+      - matches: qutebrowser|chromium
+        icon: 
+      - matches: discord
+        icon: ﭮ
+      - matches: .*
+        icon: 
+tick_rate: 1000
+

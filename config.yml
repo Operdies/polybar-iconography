@@ -1,0 +1,81 @@
+# These are the default settings used if no other config files are found.
+# The following locations are tried, in order:
+# 1. -config-file CLI argument
+# 2. config.yml next to iconography executable
+# 3. $HOME/.config/iconography/config.yml
+# 4. $HOME/.iconography.yml
+# 5. The default config
+monitors:
+  separators:
+    # The macro {number} will expand to the number bspwm assigned to this desktop
+    # The macro {name} is also supported, and will expand to the name bspwm assigned to it.
+    before: ""
+    after: ""
+    between: " ﰉ "
+desktops:
+  separators:
+    # The macro {number} will expand to the number bspwm assigned to this desktop
+    # The macro {name} is also supported, and will expand to the name bspwm assigned to it.
+    before: '{number}'
+    after: ""
+    between: "┊"
+colors:
+  accent_mode: "under" # over/under/both
+  normal:
+    foreground: nil
+    background: nil
+    accent: nil
+  focused:
+    foreground: "#fff"
+    background: "#0000"
+    accent: "#ac21c4"
+  urgent:
+    foreground: nil
+    background: "#a22"
+    accent: nil
+# Annotate the program output with escape sequences understood by Polybar to add colors and mouse events
+annotators:
+  - name: click-workspace
+    enabled: true
+  - name: click-window
+    enabled: true
+  - name: color-window 
+    enabled: true
+  - name: accent
+    enabled: true
+icons:
+  # Nodes with the same icon will be combined with a counter if true
+  stack: true
+  # When determining the icon for a node, each pattern in this mapping list is tried in order
+  # The pattern is first tried on the Class Name bspwm assigned to the node at startup
+  # It is then tried on the current WM_NAME according to xprop
+  # If neither name matches the pattern, the next pattern in the list is tried. 
+  # If no pattern matches, the fallback icon is used
+  # For this reason, specific patterns must be defined before more generic patterns
+  # If no catch-all pattern is defined, the window text will be displayed. 
+  # This can be useful for defining an appropriate pattern
+  mappings:
+    - pattern: '^nvim.*'
+      icon: 
+    - pattern: '^firefox$'
+      icon: 
+    - pattern: '.*wezterm$'
+      icon: 
+    - pattern: 'htop'
+      icon: ""
+    - pattern: '.*chromium'
+      icon: ""
+    - pattern: discord
+      icon: "ﭮ"
+    - pattern: Steam
+      icon: ""
+    - pattern: Spotify
+      icon: ""
+    - pattern: Thunar
+      icon: ""
+    - pattern: looking-glass-client
+      icon: 
+    # Catch all pattern
+    - pattern: '.*'
+      icon: 
+

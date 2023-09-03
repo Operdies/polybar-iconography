@@ -1,7 +1,11 @@
-use std::{mem, sync::OnceLock};
+use std::{
+    mem,
+    os::fd::{AsRawFd, RawFd},
+    sync::OnceLock,
+};
 
 use xcb::{
-    x::{self, Atom, Window},
+    x::{self, Atom, EventMask, Window},
     Connection,
 };
 
@@ -114,6 +118,8 @@ pub fn get_client_name(client: u32) -> Option<String> {
     // There is no way to construct Window from a known ID to my knowledge. Unsafe to the rescue!
     let window: Window = unsafe { mem::transmute(client) };
 
+    watch_properties(window);
+
     let mut prop = x::GetProperty {
         delete: false,
         window,
@@ -155,4 +161,23 @@ pub fn get_client_name(client: u32) -> Option<String> {
             None
         }
     }
+}
+
+fn watch_properties(window: Window) {
+    let (conn, _) = x_connection();
+    let value_list = vec![x::Cw::EventMask(EventMask::PROPERTY_CHANGE)];
+
+    let ch = x::ChangeWindowAttributes {
+        window,
+        value_list: &value_list,
+    };
+    conn.send_and_check_request(&ch)
+        .expect("Failed to change event mask.");
+}
+
+pub fn get_raw_fd() -> RawFd {
+    x_connection().0.as_raw_fd()
+}
+pub fn poll_event() -> Result<Option<xcb::Event>, xcb::Error> {
+    x_connection().0.poll_for_event()
 }

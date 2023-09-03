@@ -1,8 +1,8 @@
 use std::hash::Hash;
 use std::io::{Read, Write};
+use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixStream;
-use std::time::Duration;
-
+use nix::sys::select::FdSet;
 use polybar_iconography::bspc::{self, Node, WmState};
 use polybar_iconography::settings::{get_settings, Settings};
 use polybar_iconography::x11;
@@ -142,24 +142,33 @@ fn main() {
     socket
         .write_all(msg.as_bytes())
         .expect("Failed to write to socket.");
+    // socket .set_read_timeout(Some(Duration::from_millis( settings.icons.tick_rate.unwrap_or(1000),))) .expect("Failed to set socket read timeout???");
     socket
-        .set_read_timeout(Some(Duration::from_millis(
-            settings.icons.tick_rate.unwrap_or(1000),
-        )))
-        .expect("Failed to set socket read timeout???");
+        .set_nonblocking(true)
+        .expect("Failed to set socket to non-blocking mode");
 
     if let Ok(state) = bspc::dump_wm() {
         render(state, &settings);
     }
 
-    let mut buf = [0; 1000];
+    let socket_fd = socket.as_raw_fd();
+    let x11_fd = x11::get_raw_fd();
+
+    let mut buf = [0; 100];
     loop {
-        // read line or timeout
-        while let Ok(r) = socket.read(&mut buf) {
-            if buf[0..r].contains(&b'\n') {
-                break;
-            }
+        let mut fds = FdSet::new();
+        fds.insert(socket_fd);
+        fds.insert(x11_fd);
+
+        // Block until either an event has ocurred in the X client, or until new data is available
+        // in the socket. We don't care about the actual data, so we just discard everything
+        // immediately on either connection.
+        if nix::sys::select::select(None, &mut fds, None, None, None).is_ok() {
+            while let Ok(Some(_)) = x11::poll_event() {}
+            while socket.read(&mut buf).is_ok() {}
         }
+
+        // Now that both connection should be blocked again, we can get the current wm state
         match bspc::dump_wm() {
             Ok(state) => {
                 render(state, &settings);

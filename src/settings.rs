@@ -60,14 +60,12 @@ pub enum Property {
 #[derive(Default, Debug)]
 pub struct Icons {
     pub icons: Vec<Property>,
-    pub tick_rate: Option<u64>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 struct IconYaml {
     pub icons: Vec<Mapping>,
-    pub tick_rate: Option<u64>,
 }
 
 #[derive(Error, Debug)]
@@ -112,7 +110,8 @@ fn get_properties(key: &str, seq: &[serde_yaml::Value]) -> Property {
             if let Some((key, icon)) = pair.take() {
                 list_items.push(PropertyListItem {
                     predicate: Predicate::Matches(
-                        regex::Regex::from_str(&key.to_lowercase()).expect("Failed to parse pattern."),
+                        regex::Regex::from_str(&key.to_lowercase())
+                            .expect("Failed to parse pattern."),
                     ),
                     icon: Icon(icon.clone()),
                     sub_list: None,
@@ -189,10 +188,7 @@ impl Property {
 
 impl Icons {
     fn new(yaml: &IconYaml) -> Result<Self> {
-        let mut result = Icons {
-            tick_rate: yaml.tick_rate,
-            ..Default::default()
-        };
+        let mut result = Icons::default();
 
         let known_keys = ["class_name", "window_title"];
         type V = serde_yaml::Value;

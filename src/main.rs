@@ -4,7 +4,7 @@ use polybar_iconography::settings::{get_settings, Settings};
 use polybar_iconography::x11;
 use std::hash::Hash;
 use std::io::{Read, Write};
-use std::os::fd::AsRawFd;
+use std::os::fd::{self, AsRawFd};
 use std::os::unix::net::UnixStream;
 
 const SUBSCRIPTS: [&str; 10] = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₀"];
@@ -134,11 +134,7 @@ fn render(state: WmState, settings: &Settings) {
 fn main() {
     let settings = get_settings();
     let mut socket = UnixStream::connect(x11::get_bspwm_socket_path()).unwrap();
-    let mut msg = [
-        "subscribe",
-        "all",
-    ]
-    .join("\0");
+    let mut msg = ["subscribe", "all"].join("\0");
     msg.push('\0');
     socket
         .write_all(msg.as_bytes())
@@ -152,14 +148,14 @@ fn main() {
         render(state, &settings);
     }
 
-    let socket_fd = socket.as_raw_fd();
-    let x11_fd = x11::get_raw_fd();
+    let socket_fd = unsafe { fd::BorrowedFd::borrow_raw(socket.as_raw_fd()) };
+    let x11_fd = unsafe { fd::BorrowedFd::borrow_raw(x11::get_raw_fd()) };
 
     let mut buf = [0; 100];
     loop {
         let mut fds = FdSet::new();
-        fds.insert(socket_fd);
-        fds.insert(x11_fd);
+        fds.insert(&socket_fd);
+        fds.insert(&x11_fd);
 
         // Block until either an event has ocurred in the X client, or until new data is available
         // in the socket. We don't care about the actual data, so we just discard everything

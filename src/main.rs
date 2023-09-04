@@ -136,11 +136,7 @@ fn main() {
     let mut socket = UnixStream::connect(x11::get_bspwm_socket_path()).unwrap();
     let mut msg = [
         "subscribe",
-        "node_add",
-        "node_remove",
-        "node_focus",
-        "node_flag",
-        "desktop_focus",
+        "all",
     ]
     .join("\0");
     msg.push('\0');

@@ -76,7 +76,7 @@ fn check_atom(atom: Atom, window: Window) -> anyhow::Result<()> {
                 let a: &[u32] = t.value();
                 format!("{:?}", a.iter().take(10).collect::<Vec<_>>())
             }
-            _ => panic!("Unexpected formaT"),
+            _ => panic!("Unexpected format"),
         }
     };
 
@@ -171,8 +171,7 @@ fn watch_properties(window: Window) {
         window,
         value_list: &value_list,
     };
-    conn.send_and_check_request(&ch)
-        .expect("Failed to change event mask.");
+    let _ = conn.send_and_check_request(&ch);
 }
 
 pub fn get_raw_fd() -> RawFd {

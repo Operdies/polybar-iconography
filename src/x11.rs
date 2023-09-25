@@ -126,7 +126,7 @@ pub fn get_client_name(client: u32) -> Option<String> {
         property: x::ATOM_WM_NAME,
         r#type: x::ATOM_STRING,
         long_offset: 0,
-        long_length: 40,
+        long_length: 0,
     };
     let cookie = conn.send_request(&prop);
     let mut reply = conn.wait_for_reply(cookie);
@@ -136,22 +136,16 @@ pub fn get_client_name(client: u32) -> Option<String> {
                 eprintln!("Unexpected character width: {}", v.format());
                 return None;
             }
-            // if the response contains no bytes, but indicates there are more bytes
-            // to get, that means the type it returned is the actual type of the atom
-            // This happens because the WM_NAME atom can be either a STRING or a UTF8_STRING.
-            // In this case, we should just make another request with the type the request
-            // returned.
-            if v.length() == 0 && v.bytes_after() > 0 {
-                prop.r#type = v.r#type();
-                reply = conn.wait_for_reply(conn.send_request(&prop));
-                match reply {
-                    Ok(new) => {
-                        v = new;
-                    }
-                    Err(e) => {
-                        dbg!(e);
-                        return None;
-                    }
+            prop.r#type = v.r#type();
+            prop.long_length = v.bytes_after();
+            reply = conn.wait_for_reply(conn.send_request(&prop));
+            match reply {
+                Ok(new) => {
+                    v = new;
+                }
+                Err(e) => {
+                    dbg!(e);
+                    return None;
                 }
             }
             return Some(String::from_utf8_lossy(v.value()).to_string());

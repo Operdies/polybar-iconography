@@ -1,7 +1,7 @@
 use std::{
     mem,
     os::fd::{AsRawFd, RawFd},
-    sync::OnceLock,
+    sync::{Mutex, OnceLock},
 };
 
 use xcb::{
@@ -10,6 +10,10 @@ use xcb::{
 };
 
 const SOCKET_ENV_VAR: &str = "BSPWM_SOCKET";
+fn watchlist() -> &'static Mutex<Vec<Window>> {
+    static INSTANCE: OnceLock<Mutex<Vec<Window>>> = OnceLock::new();
+    INSTANCE.get_or_init(|| Mutex::new(vec![]))
+}
 
 fn x_connection() -> &'static (Connection, i32) {
     static INSTANCE: OnceLock<(Connection, i32)> = OnceLock::new();
@@ -158,6 +162,11 @@ pub fn get_client_name(client: u32) -> Option<String> {
 }
 
 fn watch_properties(window: Window) {
+    let mut watched = watchlist().lock().expect("Mutex was poisoned!");
+    if watched.contains(&window) {
+        return;
+    }
+    watched.push(window);
     let (conn, _) = x_connection();
     let value_list = vec![x::Cw::EventMask(EventMask::PROPERTY_CHANGE)];
 
